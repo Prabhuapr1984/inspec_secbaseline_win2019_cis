@@ -1,0 +1,8 @@
+name: inspec_secbaseline_win2019_cis
+title: inspec_secbaseline_win2019_cis
+maintainer: PJ
+copyright: PJ
+copyright_email: prabhuapr1984@gmail.com
+license: All Rights Reserved
+summary: Inspec profile for windows 2019
+version: 0.0.1

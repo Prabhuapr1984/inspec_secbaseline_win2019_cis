@@ -181,7 +181,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_1.2.3_L1_Ensure_Reset_account_lock
   "
   impact 1.0
   describe security_policy do
-    its("ResetLockoutCount") { should be >= 900 }
+    its("ResetLockoutCount") { should be >= 15 }
   end
 end
 
@@ -216,22 +216,22 @@ control "xccdf_org.cisecurity.benchmarks_rule_2.2.3_L1_Ensure_Access_this_comput
   end
 end
 
-control "xccdf_org.cisecurity.benchmarks_rule_2.2.4_L1_Ensure_Act_as_part_of_the_operating_system_is_set_to_No_One" do
-  title "(L1) Ensure 'Act as part of the operating system' is set to 'No One'"
-  desc  "
-    This policy setting allows a process to assume the identity of any user and thus gain access to the resources that the user is authorized to access.
+# control "xccdf_org.cisecurity.benchmarks_rule_2.2.4_L1_Ensure_Act_as_part_of_the_operating_system_is_set_to_No_One" do
+#   title "(L1) Ensure 'Act as part of the operating system' is set to 'No One'"
+#   desc  "
+#     This policy setting allows a process to assume the identity of any user and thus gain access to the resources that the user is authorized to access.
     
-    The recommended state for this setting is: No One.
+#     The recommended state for this setting is: No One.
     
-    **Note:** This user right is considered a \"sensitive privilege\" for the purposes of auditing.
+#     **Note:** This user right is considered a \"sensitive privilege\" for the purposes of auditing.
     
-    Rationale: The **Act as part of the operating system** user right is extremely powerful. Anyone with this user right can take complete control of the computer and erase evidence of their activities.
-  "
-  impact 1.0
-  describe security_policy do
-    its("SeDebugPrivilege") { should be_empty }
-  end
-end
+#     Rationale: The **Act as part of the operating system** user right is extremely powerful. Anyone with this user right can take complete control of the computer and erase evidence of their activities.
+#   "
+#   impact 1.0
+#   describe security_policy do
+#     its("SeDebugPrivilege") { should be_empty }
+#   end
+# end
 
 control "xccdf_org.cisecurity.benchmarks_rule_2.2.6_L1_Ensure_Adjust_memory_quotas_for_a_process_is_set_to_Administrators_LOCAL_SERVICE_NETWORK_SERVICE" do
   title "(L1) Ensure 'Adjust memory quotas for a process' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE'"
@@ -436,44 +436,18 @@ control "xccdf_org.cisecurity.benchmarks_rule_2.2.18_L1_Ensure_Create_symbolic_l
     Rationale: Users who have the **Create symbolic links** user right could inadvertently or maliciously expose your system to symbolic link attacks. Symbolic link attacks can be used to change the permissions on a file, to corrupt data, to destroy data, or as a Denial of Service attack.
   "
   impact 1.0
+
+  if windows_feature('Hyper-V').installed?
   describe security_policy do
-    its("SeCreateSymbolicLinkPrivilege") { should include 'S-1-5-32-544' }
+    its("SeCreateSymbolicLinkPrivilege") { should include 'USER_VIRTUAL_MACHINES' }
   end
-  
-  forbiddenEntries = []
-  
-  users.entries.each do |user|
-    forbiddenEntries.push(user[:uid])
-  end
-  
-  groups.entries.each do |group|
-    forbiddenEntries.push(group[:name])
-    forbiddenEntries.push(group[:gid])
-  end
-  
-  forbiddenEntries -= ['S-1-5-32-544']
-  
-  getHyperV = <<-EOH
-    Import-module servermanager ; (Get-WindowsFeature Hyper-V).Installed
-  EOH
-  
-  hyperVInstalled = powershell(getHyperV).stdout.strip
- 
-  if hyperVInstalled != 'False'
+  else
     describe security_policy do
-      its("SeCreateSymbolicLinkPrivilege") { should include USER_VIRTUAL_MACHINES }
-    end
-  
-    forbiddenEntries -= [USER_VIRTUAL_MACHINES]
-  end
-  
-  forbiddenEntries.each do |user|
-    describe security_policy do
-      its("SeCreateSymbolicLinkPrivilege") { should_not include user }
+      its("SeCreateSymbolicLinkPrivilege") { should include 'S-1-5-32-544' }
     end
   end
 end
-
+  
 control "xccdf_org.cisecurity.benchmarks_rule_2.2.19_L1_Ensure_Debug_programs_is_set_to_Administrators" do
   title "(L1) Ensure 'Debug programs' is set to 'Administrators'"
   desc  "
@@ -1328,7 +1302,7 @@ logon(s)' (MS only) (Automated)" do
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon:") do
-    it { should have_property "CachedLogonsCount" }
+    # it { should have_property "CachedLogonsCount" }
     its("CachedLogonsCount") { should eq 4 }
   end
 end
@@ -1666,6 +1640,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_2.3.10.8_L1_Configure_Network_acce
     describe(reg_values.sort) do
       it { should eq expected.sort }
   end
+ end
 end
 
 control "xccdf_org.cisecurity.benchmarks_rule_2.3.10.9_L1_Configure_Network_access_Remotely_accessible_registry_paths_and_sub-paths" do
@@ -2961,7 +2936,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_17.6.1_L1_Ensure_'Audit Detailed F
   "
   impact 1.0
   describe audit_policy do
-    its("Audit Detailed File Share") { should eq "Failure" }
+    its("Detailed File Share") { should eq "Failure" }
   end
 end
 
@@ -2975,7 +2950,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_17.6.2_L1_Ensure 'Audit File Share
   "
   impact 1.0
   describe audit_policy do
-    its("Audit File Share") { should eq "Success and Failure" }
+    its("File Share") { should eq "Success and Failure" }
   end
 end
 
@@ -3373,7 +3348,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.1.2.2_L1_Ensure_Allow_input_per
   end
 end
 
-control "18.1.3 (L2) Ensure 'Allow Online Tips' is set to 'Disabled' (Automated)" do
+control "xccdf_org.cisecurity.benchmarks_rule_18.1.3 (L2) Ensure 'Allow Online Tips' is set to 'Disabled' (Automated)" do
   title "(L1) Ensure 'Allow input personalization' is set to 'Disabled'"
   desc  "
     This policy setting configures the retrieval of online tips and help for the Settings app.
@@ -3384,7 +3359,7 @@ control "18.1.3 (L2) Ensure 'Allow Online Tips' is set to 'Disabled' (Automated)
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer") do
-    it { should have_property "AllowInputPersonalization" }
+    # it { should have_property "AllowInputPersonalization" }
     its("AllowOnlineTips") { should cmp == 0 }
   end
 end
@@ -3438,7 +3413,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.2.2_L1_Ensure_Do_not_allow_pass
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft Services\\AdmPwd") do
-    it { should have_property "PwdExpirationProtectionEnabled" }
+    # it { should have_property "PwdExpirationProtectionEnabled" }
     its("PwdExpirationProtectionEnabled") { should cmp == 1 }
   end
 end
@@ -3462,7 +3437,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.2.3_L1_Ensure_Enable_Local_Admi
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\Software\\Policies\\Microsoft Services\\AdmPwd") do
-    it { should have_property "AdmPwdEnabled" }
+    # it { should have_property "AdmPwdEnabled" }
     its("AdmPwdEnabled") { should cmp == 1 }
   end
 end
@@ -3486,7 +3461,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.2.4_L1_Ensure_Password_Settings
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft Services\\AdmPwd") do
-    it { should have_property "PasswordComplexity" }
+    # it { should have_property "PasswordComplexity" }
     its("PasswordComplexity") { should cmp == 4 }
   end
 end
@@ -3510,7 +3485,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.2.5_L1_Ensure_Password_Settings
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft Services\\AdmPwd") do
-    it { should have_property "PasswordLength" }
+    # it { should have_property "PasswordLength" }
     its("PasswordLength") { should cmp >= 15 }
   end
 end
@@ -3534,7 +3509,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.2.6_L1_Ensure_Password_Settings
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft Services\\AdmPwd") do
-    it { should have_property "PasswordAgeDays" }
+    # it { should have_property "PasswordAgeDays" }
     its("PasswordAgeDays") { should cmp <= 30 }
   end
 end
@@ -3749,7 +3724,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.4.5 (L2) Ensure 'MSS: (KeepAliv
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters") do
-    it { should have_property "KeepAliveTime" }
+    # it { should have_property "KeepAliveTime" }
     its("KeepAliveTime") { should cmp == 300000 }
   end
 end
@@ -3774,7 +3749,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.4.6_L1_Ensure_MSS_NoNameRelease
   end
 end
 
-control "18.4.7 (L2) Ensure 'MSS: (PerformRouterDiscovery) Allow IRDP to detect and configure Default Gateway addresses (could lead to DoS)' is set to 'Disabled' (Automated)" do
+control "xccdf_org.cisecurity.benchmarks_rule_18.4.7 (L2) Ensure 'MSS: (PerformRouterDiscovery) Allow IRDP to detect and configure Default Gateway addresses (could lead to DoS)' is set to 'Disabled' (Automated)" do
   title "(L1) Ensure 'MSS: (PerformRouterDiscovery) Allow IRDP to detect and configure Default Gateway addresses (could lead to DoS)' is set to 'Disabled' (Automated)"
   desc  "
     This setting is used to enable or disable the Internet Router Discovery Protocol (IRDP),
@@ -3785,7 +3760,7 @@ control "18.4.7 (L2) Ensure 'MSS: (PerformRouterDiscovery) Allow IRDP to detect 
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters") do
-    it { should have_property "PerformRouterDiscovery" }
+    # it { should have_property "PerformRouterDiscovery" }
     its("PerformRouterDiscovery") { should cmp == 0 }
   end
 end
@@ -3843,7 +3818,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.4.10 (L2) Ensure 'MSS: (TcpMaxD
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\TCPIP6\\Parameters") do
-    it { should have_property "TcpMaxDataRetransmissions" }
+    # it { should have_property "TcpMaxDataRetransmissions" }
     its("TcpMaxDataRetransmissions") { should eq 3 }
   end
 end
@@ -3863,7 +3838,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.4.11 (L2) Ensure 'MSS: (TcpMaxD
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\TCPIP\\Parameters") do
-    it { should have_property "TcpMaxDataRetransmissions" }
+    # it { should have_property "TcpMaxDataRetransmissions" }
     its("TcpMaxDataRetransmissions") { should eq 3 }
   end
 end
@@ -3933,7 +3908,8 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.5.5.1 (L2) Ensure 'Enable Font 
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\System") do
-    it { should have_property "EnableFontProviders" }
+    # it { should have_property "EnableFontProviders" }
+    # it { should have_property_value('EnableFontProviders', :dword, '0') }
     its("EnableFontProviders") { should cmp == 0 }
   end
 end
@@ -3949,7 +3925,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.5.8.1_L1_Ensure_Enable_insecure
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\LanmanWorkstation") do
-    it { should have_property "AllowInsecureGuestAuth" }
+    # it { should have_property "AllowInsecureGuestAuth" }
     its("AllowInsecureGuestAuth") { should cmp == 0 }
   end
 end
@@ -3967,10 +3943,10 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.5.9.1 (L2) Ensure 'Turn on Mapp
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\LLTD") do
-    it { should have_property "AllowLLTDIOOnDomain" }
-    it { should have_property "AllowLLTDIOOnPublicNet" }
-    it { should have_property "EnableLLTDIO" }
-    it { should have_property "ProhibitLLTDIOOnPrivateNet" }
+    # it { should have_property "AllowLLTDIOOnDomain" }
+    # it { should have_property "AllowLLTDIOOnPublicNet" }
+    # it { should have_property "EnableLLTDIO" }
+    # it { should have_property "ProhibitLLTDIOOnPrivateNet" }
     its("AllowLLTDIOOnDomain") { should eq 0 }
     its("AllowLLTDIOOnPublicNet") { should eq 0 }
     its("EnableLLTDIO") { should eq 0 }
@@ -3992,10 +3968,10 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.5.9.2 (L2) Ensure 'Turn on Resp
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\LLTD") do
-    it { should have_property "AllowRspndrOndomain" }
-    it { should have_property "AllowRspndrOnPublicNet" }
-    it { should have_property "EnableRspndr" }
-    it { should have_property "ProhibitRspndrOnPrivateNet" }
+    # it { should have_property "AllowRspndrOndomain" }
+    # it { should have_property "AllowRspndrOnPublicNet" }
+    # it { should have_property "EnableRspndr" }
+    # it { should have_property "ProhibitRspndrOnPrivateNet" }
     its("AllowRspndrOndomain") { should eq 0 }
     its("AllowRspndrOnPublicNet") { should eq 0 }
     its("EnableRspndr") { should eq 0 }
@@ -4017,7 +3993,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.5.10.2 (L2) Ensure 'Turn off Mi
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\Software\\Policies\\Microsoft\\Peernet") do
-    it { should have_property "Disabled" }
+    # it { should have_property "Disabled" }
     its("Disabled") { should eq 1 }
   end
 end
@@ -4051,7 +4027,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.5.11.3_L1_Ensure_Prohibit_use_o
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\Network Connections") do
-    it { should have_property "NC_ShowSharedAccessUI" }
+    # it { should have_property "NC_ShowSharedAccessUI" }
     its("NC_ShowSharedAccessUI") { should cmp == 0 }
   end
 end
@@ -4118,7 +4094,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.5.20.1 (L2) Ensure 'Configurati
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\Tcpip6\\Parameters") do
-    it { should have_property "DisabledComponents" }
+    # it { should have_property "DisabledComponents" }
     its("DisabledComponents") { should cmp 255 }
   end
 end
@@ -4134,11 +4110,11 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.5.20.1_L1_Ensure_Minimize_the_n
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\Software\\Policies\\Microsoft\\Windows\\WCN\\Registrars") do
-    it { should have_property "DisableFlashConfigRegistrar" }
-    it { should have_property "DisableInBand802DOT11Registrar" }
-    it { should have_property "DisableUPnPRegistrar" }
-    it { should have_property "DisableWPDRegistrar" }
-    it { should have_property "EnableRegistrars" }
+    # it { should have_property "DisableFlashConfigRegistrar" }
+    # it { should have_property "DisableInBand802DOT11Registrar" }
+    # it { should have_property "DisableUPnPRegistrar" }
+    # it { should have_property "DisableWPDRegistrar" }
+    # it { should have_property "EnableRegistrars" }
     its("DisableFlashConfigRegistrar") { should eq 0 }
     its("DisableInBand802DOT11Registrar") { should eq 0 }
     its("DisableUPnPRegistrar") { should eq 0 }
@@ -4155,7 +4131,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.5.20.2 (L2) Ensure 'Prohibit ac
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\Software\\Policies\\Microsoft\\Windows\\WCN\\UI") do
-    it { should have_property "DisableWcnUi" }
+    # it { should have_property "DisableWcnUi" }
     its("DisableWcnUi") { should eq 1 }
   end
 end
@@ -4192,7 +4168,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.5.21.2 (L2) Ensure 'Prohibit co
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\Software\\Policies\\Microsoft\\Windows\\WcmSvc\\GroupPolicy") do
-    it { should have_property "fBlockNonDomain" }
+    # it { should have_property "fBlockNonDomain" }
     its("fBlockNonDomain") { should eq 1 }
   end
 end
@@ -4209,7 +4185,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.7.1.1 (L2) Ensure 'Turn off not
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\CurrentVersion\\PushNotifications") do
-    it { should have_property "NoCloudApplicationNotification" }
+    # it { should have_property "NoCloudApplicationNotification" }
     its("NoCloudApplicationNotification") { should eq 1 }
   end
 end
@@ -4249,7 +4225,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.8.4.1 (L1) Ensure 'Encryption O
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\\CredSSP\\Parameters") do
-    it { should have_property "AllowEncryptionOracle" }
+    # it { should have_property "AllowEncryptionOracle" }
     its("AllowEncryptionOracle") { should cmp == 1 }
   end
 end
@@ -4272,29 +4248,29 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.8.4.2_L1_Ensure_Remote_host_all
   end
 end
 
-# control "xccdf_org.cisecurity.benchmarks_rule_18.8.14.1_L1_Ensure_Boot-Start_Driver_Initialization_Policy_is_set_to_Enabled_Good_unknown_and_bad_but_critical" do
-#   title "(L1) Ensure 'Boot-Start Driver Initialization Policy' is set to 'Enabled: Good, unknown and bad but critical'"
-#   desc  "
-#     This policy setting allows you to specify which boot-start drivers are initialized based on a classification determined by an Early Launch Antimalware boot-start driver. The Early Launch Antimalware boot-start driver can return the following classifications for each boot-start driver:
+control "xccdf_org.cisecurity.benchmarks_rule_18.8.14.1_L1_Ensure_Boot-Start_Driver_Initialization_Policy_is_set_to_Enabled_Good_unknown_and_bad_but_critical" do
+  title "(L1) Ensure 'Boot-Start Driver Initialization Policy' is set to 'Enabled: Good, unknown and bad but critical'"
+  desc  "
+    This policy setting allows you to specify which boot-start drivers are initialized based on a classification determined by an Early Launch Antimalware boot-start driver. The Early Launch Antimalware boot-start driver can return the following classifications for each boot-start driver:
     
-#     * Good: The driver has been signed and has not been tampered with.
-#     * Bad: The driver has been identified as malware. It is recommended that you do not allow known bad drivers to be initialized.
-#     * Bad, but required for boot: The driver has been identified as malware, but the computer cannot successfully boot without loading this driver.
-#     * Unknown: This driver has not been attested to by your malware detection application and has not been classified by the Early Launch Antimalware boot-start driver.
-#     If you enable this policy setting you will be able to choose which boot-start drivers to initialize the next time the computer is started.
+    * Good: The driver has been signed and has not been tampered with.
+    * Bad: The driver has been identified as malware. It is recommended that you do not allow known bad drivers to be initialized.
+    * Bad, but required for boot: The driver has been identified as malware, but the computer cannot successfully boot without loading this driver.
+    * Unknown: This driver has not been attested to by your malware detection application and has not been classified by the Early Launch Antimalware boot-start driver.
+    If you enable this policy setting you will be able to choose which boot-start drivers to initialize the next time the computer is started.
     
-#     If your malware detection application does not include an Early Launch Antimalware boot-start driver or if your Early Launch Antimalware boot-start driver has been disabled, this setting has no effect and all boot-start drivers are initialized.
+    If your malware detection application does not include an Early Launch Antimalware boot-start driver or if your Early Launch Antimalware boot-start driver has been disabled, this setting has no effect and all boot-start drivers are initialized.
     
-#     The recommended state for this setting is: Enabled: Good, unknown and bad but critical.
+    The recommended state for this setting is: Enabled: Good, unknown and bad but critical.
     
-#     Rationale: This policy setting helps reduce the impact of malware that has already infected your system.
-#   "
-#   impact 1.0
-#   describe registry_key("HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Policies\\EarlyLaunch") do
-#     it { should have_property "DriverLoadPolicy" }
-#     its("DriverLoadPolicy") { should cmp == 3 }
-#   end
-# end
+    Rationale: This policy setting helps reduce the impact of malware that has already infected your system.
+  "
+  impact 1.0
+  describe registry_key("HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Policies\\EarlyLaunch") do
+    it { should have_property "DriverLoadPolicy" }
+    its("DriverLoadPolicy") { should cmp == 3 }
+  end
+end
 
 control "xccdf_org.cisecurity.benchmarks_rule_18.8.5.1 (NG) Ensure 'Turn On Virtualization Based Security' is set to 'Enabled' (Automated)" do
   title "18.8.5.1 (NG) Ensure 'Turn On Virtualization Based Security' is set to 'Enabled' (Automated)"
@@ -4324,7 +4300,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.8.5.2 (NG) Ensure 'Turn On Virt
   end
 end
 
-control "18.8.5.3 (NG) Ensure 'Turn On Virtualization Based Security:Virtualization Based Protection of Code Integrity' is set to 'Enabled with UEFI lock' (Automated)" do
+control "xccdf_org.cisecurity.benchmarks_rule_18.8.5.3 (NG) Ensure 'Turn On Virtualization Based Security:Virtualization Based Protection of Code Integrity' is set to 'Enabled with UEFI lock' (Automated)" do
   title "(NG) Ensure 'Turn On Virtualization Based Security:Virtualization Based Protection of Code Integrity' is set to 'Enabled with UEFI lock' (Automated)"
   desc  "
     This setting enables virtualization based protection of Kernel Mode Code Integrity. When
@@ -4355,7 +4331,7 @@ control "18.8.5.3 (NG) Ensure 'Turn On Virtualization Based Security:Virtualizat
   end
 end
 
-control "18.8.5.4 (NG) Ensure 'Turn On Virtualization Based Security: Require UEFI Memory Attributes Table' is set to 'True (checked)' (Automated)" do
+control "xccdf_org.cisecurity.benchmarks_18.8.5.4 (NG) Ensure 'Turn On Virtualization Based Security: Require UEFI Memory Attributes Table' is set to 'True (checked)' (Automated)" do
   title "(NG) Ensure 'Turn On Virtualization Based Security: Require UEFI Memory Attributes Table' is set to 'True (checked)' (Automated)"
   desc  "
     This option will only enable Virtualization Based Protection of Code Integrity on devices
@@ -4382,7 +4358,7 @@ control "18.8.5.4 (NG) Ensure 'Turn On Virtualization Based Security: Require UE
   end
 end
 
-control "18.8.5.5 (NG) Ensure 'Turn On Virtualization Based Security: Credential Guard Configuration' is set to 'Enabled with UEFI lock' (MS Only) (Automated)" do
+control "xccdf_org.cisecurity.benchmarks_18.8.5.5 (NG) Ensure 'Turn On Virtualization Based Security: Credential Guard Configuration' is set to 'Enabled with UEFI lock' (MS Only) (Automated)" do
   title "(NG) Ensure 'Turn On Virtualization Based Security: Credential Guard Configuration' is set to 'Enabled with UEFI lock' (MS Only) (Automated)"
   desc  "
     This setting lets users turn on Credential Guard with virtualizationbased
@@ -4409,7 +4385,7 @@ control "18.8.5.5 (NG) Ensure 'Turn On Virtualization Based Security: Credential
   end
 end
 
-control "18.8.5.7 (NG) Ensure 'Turn On Virtualization Based Security: Secure Launch Configuration' is set to 'Enabled' (Automated)" do
+control "xccdf_org.cisecurity.benchmarks_18.8.5.7 (NG) Ensure 'Turn On Virtualization Based Security: Secure Launch Configuration' is set to 'Enabled' (Automated)" do
   title "(NG) Ensure 'Turn On Virtualization Based Security: Secure Launch Configuration' is set to 'Enabled' (Automated)"
   desc  "
     Secure Launch protects the Virtualization Based Security environment from exploited vulnerabilities in device firmware.The recommended state for this setting is: Enabled.
@@ -4489,7 +4465,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.8.21.4_L1_Ensure_Continue_exper
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\System") do
-    it { should have_property "EnableCdp" }
+    # it { should have_property "EnableCdp" }
     its("EnableCdp") { should cmp == 0 }
   end
 end
@@ -4758,7 +4734,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.8.27.1 (L2) Ensure 'Disallow co
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\Software\\Policies\\Microsoft\\Control Panel\\International") do
-    it { should have_property "BlockUserInputMethodsForSignIn" }
+    # it { should have_property "BlockUserInputMethodsForSignIn" }
     its("BlockUserInputMethodsForSignIn") { should cmp == 1 }
   end
 end
@@ -4891,8 +4867,8 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.8.31.1 (L2) Ensure 'Allow Clipb
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\System") do
-    it { should have_property "AllowCrossDeviceClipboard " }
-    its("AllowCrossDeviceClipboard ") { should eq 0 }
+    # it { should have_property "AllowCrossDeviceClipboard " }
+    its("AllowCrossDeviceClipboard") { should eq 0 }
   end
 end
 
@@ -4906,8 +4882,8 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.8.31.2 (L2) Ensure 'Allow uploa
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\System") do
-    it { should have_property "UploadUserActivities " }
-    its("UploadUserActivities ") { should eq 0 }
+    # it { should have_property "UploadUserActivities " }
+    its("UploadUserActivities") { should eq 0 }
   end
 end
 
@@ -5033,17 +5009,17 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.8.37.2 (L2) Ensure 'Restrict Un
     This policy setting controls how the RPC server runtime handles unauthenticated RPC clients connecting to RPC servers.This policy setting impacts all RPC applications. In a domain environment this policy setting should be used with caution as it can impact a wide range of functionality including group policy processing itself. Reverting a change to this policy setting can require manual intervention on each affected machine. This policy setting should never be applied to a Domain Controller.
 
     A client will be considered an authenticated client if it uses a named pipe to communicate with the server or if it uses RPC Security. RPC Interfaces that have specifically requested to be accessible by unauthenticated clients may be exempt from this restriction, depending on the selected value for this policy setting.
-    "
-    None" allows all RPC clients to connect to RPC Servers running on the machine on which the policy setting is applied.
-    "
-    Authenticated" allows only authenticated RPC Clients (per the definition above) to connect to RPC Servers running on the machine on which the policy setting is applied.
+
+    None allows all RPC clients to connect to RPC Servers running on the machine on which the policy setting is applied.
+
+    Authenticated allows only authenticated RPC Clients (per the definition above) to connect to RPC Servers running on the machine on which the policy setting is applied.
     
     Exemptions are granted to interfaces that have requested them.
-    "
-    Authenticated without exceptions" allows only authenticated RPC Clients (per the definition above) to connect to RPC Servers running on the machine on which the policy setting is applied. No exceptions are allowed. This value has the potential to cause serious problems and is not recommended.
     
-    Note: This policy setting will not be applied until the system is rebooted.
-  "
+    Authenticated without exceptions allows only authenticated RPC Clients (per the definition above) to connect to RPC Servers running on the machine on which the policy setting is applied. No exceptions are allowed. This value has the potential to cause serious problems and is not recommended.
+    
+    Note: This policy setting will not be applied until the system is rebooted."
+  
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\Software\\Policies\\Microsoft\\Windows NT\\Rpc") do
     it { should have_property "RestrictRemoteClients" }
@@ -5917,7 +5893,7 @@ control "xccdf_org.cisecurity.benchmarks_rule_18.9.45.10.1 (L2) Ensure 'Configur
   "
   impact 1.0
   describe registry_key("HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\Reporting") do
-    it { should have_property "DisableGenericRePorts" }
+    # it { should have_property "DisableGenericRePorts" }
     its("DisableGenericRePorts") { should cmp == 0 }
   end
 end
@@ -7068,5 +7044,4 @@ control "xccdf_org.cisecurity.benchmarks_rule_19.7.47.2.1 (L2) Ensure 'Prevent C
       its("PreventCodecDownload") { should cmp == 1 }
     end
   end
-end
 end
